@@ -140,8 +140,9 @@ class App:
         table_frame.pack(expand=True, fill="both", padx=10, pady=10)
 
         # Настройка таблицы (Treeview)
+        # ДОБАВЛЕН 'Сем.'
         self.columns = (
-            'id', 'Цикл', 'Дисциплина', 'Направление', 'Курс',
+            'id', 'Цикл', 'Дисциплина', 'Направление', 'Курс', 'Сем.',
             'Студенты', 'Потоки', 'Группы', 'Подгруппы', 'Лекции', 'Практика',
             'Лабы', 'КСР', 'Доп', 'Всего', 'ДН', 'ЭОР', 'Имена'
         )
@@ -157,6 +158,7 @@ class App:
         self.tree.heading('Дисциплина', text='Наименование дисциплины')
         self.tree.heading('Направление', text='Шифр')
         self.tree.heading('Курс', text='Курс')
+        self.tree.heading('Сем.', text='Сем.')  # <--- ЗАГОЛОВОК СЕМЕСТРА
         self.tree.heading('Студенты', text='Студенты')
         self.tree.heading('Потоки', text='Потоки')
         self.tree.heading('Группы', text='Группы')
@@ -177,6 +179,7 @@ class App:
         self.tree.column('Дисциплина', width=200, anchor=tk.W)
         self.tree.column('Направление', width=80, anchor=tk.CENTER)
         self.tree.column('Курс', width=50, anchor=tk.CENTER)
+        self.tree.column('Сем.', width=40, anchor=tk.CENTER)  # <--- ШИРИНА СЕМЕСТРА
         self.tree.column('Студенты', width=70, anchor=tk.CENTER)
         self.tree.column('Потоки', width=60, anchor=tk.CENTER)
         self.tree.column('Группы', width=60, anchor=tk.CENTER)
@@ -234,6 +237,7 @@ class App:
                 df_col_name = 'Лабораторные занятия: всего'
             elif column_name == 'Имена':
                 df_col_name = 'Имена_Raw'
+            # Семестр не редактируется
 
             if df_col_name and df_col_name in self.editable_cols:
                 self.edit_cell(item_id, column_name, df_col_name, event.x, event.y)
@@ -288,6 +292,7 @@ class App:
             self.recalculate_totals(row_index)
 
             current_values = list(self.tree.item(item_id, 'values'))
+            # Обновление только редактируемых столбцов и пересчитанных итогов
             current_values[self.columns.index('Студенты')] = self.df_f1.at[row_index, 'Количество студентов']
             current_values[self.columns.index('Потоки')] = self.df_f1.at[row_index, 'Количество потоков']
             current_values[self.columns.index('Группы')] = self.df_f1.at[row_index, 'Количество групп']
@@ -329,8 +334,7 @@ class App:
             if pd.isna(total_labs): total_labs = 0
 
             # Добавляем КСР в расчет, используя 'КСР_F2' из F2
-            ksr_value = f2_row['КСР_F2']
-            self.df_f1.at[row_index, 'КСР'] = ksr_value  # Записываем КСР в DF F1
+            ksr_value = self.df_f1.at[row_index, 'КСР']  # КСР уже в df_f1, берем его
 
             has_exam = f2_row['Экзамены_F2_Наличие'] > 0
 
@@ -357,25 +361,25 @@ class App:
 
             # --- ЛОГИКА ЗАПОЛНЕНИЯ ИТОГОВЫХ СТОЛБЦОВ ---
 
-            # Расчет часов личного присутствия (дн.)
             total_lich = (
-                    total_lectures + total_practice + total_labs +
+                    self.df_f1['Лекции: всего'].iloc[row_index] + self.df_f1['Практические занятия: всего'].iloc[
+                row_index] + self.df_f1['Лабораторные занятия: всего'].iloc[row_index] +
                     ksr_value +
-                    self.df_f1.at[row_index, 'Консультации'] +
-                    self.df_f1.at[row_index, 'Контр. работы'] +
-                    self.df_f1.at[row_index, 'Зачеты'] +
-                    self.df_f1.at[row_index, 'Экзамены'] +
-                    self.df_f1.at[row_index, 'Практики'] +
-                    self.df_f1.at[row_index, 'Курсовые работы'] +
-                    self.df_f1.at[row_index, 'Выпускные квалификационные работы'] +
-                    self.df_f1.at[row_index, 'Дополнительно']
+                    self.df_f1['Консультации'].iloc[row_index] +
+                    self.df_f1['Контр. работы'].iloc[row_index] +
+                    self.df_f1['Зачеты'].iloc[row_index] +
+                    self.df_f1['Экзамены'].iloc[row_index] +
+                    self.df_f1['Практики'].iloc[row_index] +
+                    self.df_f1['Курсовые работы'].iloc[row_index] +
+                    self.df_f1['Выпускные квалификационные работы'].iloc[row_index] +
+                    self.df_f1['Дополнительно'].iloc[row_index]
             ).round(2)
 
             # Расчет часов в дистанционном формате (ЭОР)
             total_eor = (
-                    self.df_f1.at[row_index, 'Лекции: в дистанционном формате (ЭОР)'] +
-                    self.df_f1.at[row_index, 'Практические занятия: в дистанционном формате (ЭОР)'] +
-                    self.df_f1.at[row_index, 'Лабораторные занятия: в дистанционном формате (ЭОР)']
+                    self.df_f1['Лекции: в дистанционном формате (ЭОР)'].iloc[row_index] +
+                    self.df_f1['Практические занятия: в дистанционном формате (ЭОР)'].iloc[row_index] +
+                    self.df_f1['Лабораторные занятия: в дистанционном формате (ЭОР)'].iloc[row_index]
             ).round(2)
 
             # Заполнение новых столбцов
@@ -412,7 +416,7 @@ class App:
                 skiprows=header_row_index_level1 - 3,
                 header=[0, 1]
             )
-            df_f2_raw_columns = ['_'.join(col).strip() for col in df_f2_raw.columns.values]
+            df_f2_raw_columns = ['_'.join(map(str, col)).strip() for col in df_f2_raw.columns.values]
             df_f2_raw.columns = df_f2_raw_columns
 
             column_mapping_f2_to_internal = {
@@ -478,11 +482,12 @@ class App:
                 speciality_map).fillna(
                 df_f2['Наименование_Направления_Специализации']).infer_objects(copy=False)
 
-            # 30 столбцов (индексы 0-29)
+            # 31 столбец (индексы 0-30), включая 'Семестр'
             f1_columns_flat = [
                 'Цикл дисциплины по уч. плану', 'Наименование дисциплины',
                 'Шифр направления/специальности', 'Наименование направления/специальности (профиль/специализация)',
                 'Форма обучения', 'Курс',
+                'Семестр',  # <--- ДОБАВЛЕН
                 'Количество студентов', 'Количество потоков', 'Количество групп', 'Количество подгрупп',
                 'Лекции: всего', 'Лекции: в дистанционном формате (ЭОР)',
                 'Практические занятия: всего', 'Практические занятия: в дистанционном формате (ЭОР)',
@@ -504,6 +509,7 @@ class App:
                 'Наименование_Направления_Специализации_Mapped']
             self.df_f1['Форма обучения'] = 'очная'
             self.df_f1['Курс'] = df_f2['Курс_F2']
+            self.df_f1['Семестр'] = df_f2['Семестр_F2'].fillna(0).astype(int)  # <--- ПРИСВОЕНИЕ
             self.df_f1['Количество студентов'] = df_f2['Количество_Студентов_F2']
             self.df_f1['Количество потоков'] = df_f2['Количество_Потоков_F2']
             self.df_f1['Количество групп'] = df_f2['Количество_Групп_Число']
@@ -581,7 +587,6 @@ class App:
             messagebox.showerror("Ошибка", "Файл F2-2022.xlsx не найден.")
         except Exception as e:
             self.status_label.config(text=f"Критическая ошибка: {e}", foreground="red")
-            messagebox.showerror("Критическая ошибка", f"Произошла ошибка при обработке файла: {e}")
             traceback.print_exc()
 
     def update_table(self, df):
@@ -598,6 +603,7 @@ class App:
                 row['Наименование дисциплины'],
                 row['Шифр направления/специальности'],
                 row['Курс'],
+                row['Семестр'],  # <--- ЗНАЧЕНИЕ СЕМЕСТРА
                 row['Количество студентов'],
                 row['Количество потоков'],
                 row['Количество групп'],
@@ -616,7 +622,9 @@ class App:
 
     def save_report(self):
         """
-        Сохраняет отчёт с отдельными листами для каждого имени.
+        Сохраняет отчёт с отдельными листами для каждого имени,
+        сегментируя данные по ЧЕТНОСТИ/НЕЧЕТНОСТИ семестров, включая специальные строки для итогов.
+        Все пустые ячейки-заполнители теперь имеют границы, но не содержат нулей.
         """
         if self.df_f1 is None:
             messagebox.showerror("Ошибка", "Сначала необходимо обработать файл.")
@@ -633,49 +641,279 @@ class App:
         self.status_label.config(text="Сохранение отчёта...")
         self.root.update_idletasks()
 
+        # Столбцы для вывода (30 столбцов, ИСКЛЮЧАЯ 'Семестр')
+        OUTPUT_COLS = [
+            'Цикл дисциплины по уч. плану', 'Наименование дисциплины',
+            'Шифр направления/специальности',
+            'Наименование направления/специальности (профиль/специализация)',
+            'Форма обучения', 'Курс',  # Индексы 0-5 (Текстовые)
+            'Количество студентов', 'Количество потоков', 'Количество групп', 'Количество подгрупп',
+            'Лекции: всего', 'Лекции: в дистанционном формате (ЭОР)',
+            'Практические занятия: всего', 'Практические занятия: в дистанционном формате (ЭОР)',
+            'Лабораторные занятия: всего', 'Лабораторные занятия: в дистанционном формате (ЭОР)',
+            'КСР', 'Консультации', 'Контр. работы', 'Зачеты', 'Экзамены', 'Практики',
+            'Курсовые работы', 'Выпускные квалификационные работы', 'Дополнительно',
+            'Всего', 'дн.', 'веч.', 'заоч.', 'в дистанционном формате (ЭОР)'  # Индексы 6-29 (Числовые)
+        ]
+
+        # Столбцы с ЧИСЛОВЫМИ ДАННЫМИ (начинаются с 'Количество студентов' - индекс 6)
+        HOURS_COLS_INDICES = list(range(6, 31))
+        TEXT_COLS_INDICES = list(range(0, 6))
+
+        excluded_count = 0
+
         try:
             unique_names = get_unique_names(self.df_f1['Имена_Raw'].astype(str))
             with pd.ExcelWriter(output_file, engine='xlsxwriter') as writer:
                 workbook = writer.book
 
+                # --- ОПРЕДЕЛЕНИЕ ФОРМАТОВ ---
+
+                # 1. Формат для числовых данных (G-AD) - С ГРАНИЦЕЙ
+                data_format = workbook.add_format(
+                    {'border': 1, 'align': 'center', 'valign': 'vcenter', 'num_format': 'General'})
+
+                # 2. Формат для текстовых данных (A-F) - С ГРАНИЦЕЙ
+                text_data_format = workbook.add_format(
+                    {'border': 1, 'align': 'left', 'valign': 'vcenter'})
+
+                # 3. Формат для спец.текста в строках ИТОГОВ (Колонка B) - С ГРАНИЦЕЙ, БОЛД
+                special_text_format = workbook.add_format({
+                    'bold': True, 'align': 'left', 'valign': 'vcenter', 'border': 1
+                })
+                # 4. Формат для заполнения пустых текстовых ячеек (A, C-F) в блоках данных - С ГРАНИЦЕЙ
+                special_cell_format = workbook.add_format({
+                    'border': 1, 'align': 'center', 'valign': 'vcenter'
+                })
+                # 5. Формат для строк итогов (серый) - С ГРАНИЦЕЙ, БОЛД
+                total_row_format = workbook.add_format({
+                    'bold': True, 'align': 'left', 'valign': 'vcenter', 'border': 1, 'bg_color': '#D9D9D9'
+                })
+                # 6. Формат для формул в строках итогов (серый) - С ГРАНИЦЕЙ, БОЛД
+                total_formula_format = workbook.add_format({
+                    'bold': True, 'num_format': 'General', 'align': 'center', 'valign': 'vcenter', 'border': 1,
+                    'bg_color': '#D9D9D9'
+                })
+
+                # 7. Формат для заполнения пустых ячеек в строках ИТОГОВ (A, C-F)
+                total_filler_format = workbook.add_format({
+                    'border': 1, 'bg_color': '#D9D9D9'
+                })
+                # ---------------------------
+
                 for name in unique_names:
                     pattern = re.compile(r'\b' + re.escape(name) + r'\b', re.IGNORECASE)
-                    output_columns = [
-                        'Цикл дисциплины по уч. плану', 'Наименование дисциплины',
-                        'Шифр направления/специальности',
-                        'Наименование направления/специальности (профиль/специализация)',
-                        'Форма обучения', 'Курс',
-                        'Количество студентов', 'Количество потоков', 'Количество групп', 'Количество подгрупп',
-                        'Лекции: всего', 'Лекции: в дистанционном формате (ЭОР)',
-                        'Практические занятия: всего', 'Практические занятия: в дистанционном формате (ЭОР)',
-                        'Лабораторные занятия: всего', 'Лабораторные занятия: в дистанционном формате (ЭОР)',
-                        'КСР', 'Консультации', 'Контр. работы', 'Зачеты', 'Экзамены', 'Практики',
-                        'Курсовые работы', 'Выпускные квалификационные работы', 'Дополнительно',
-                        'Всего',
-                        'дн.', 'веч.', 'заоч.', 'в дистанционном формате (ЭОР)'
-                    ]
 
-                    filtered_df = self.df_f1[self.df_f1['Имена_Raw'].astype(str).str.contains(pattern, na=False)][
-                        output_columns]
+                    idx_by_name = self.df_f1[self.df_f1['Имена_Raw'].astype(str).str.contains(pattern, na=False)].index
+                    if idx_by_name.empty:
+                        continue
 
-                    if not filtered_df.empty:
-                        sheet_name = f'{name}'
-                        if len(sheet_name) > 31:
-                            sheet_name = sheet_name[:31]
+                    df_name = self.df_f1.loc[idx_by_name].copy()
+                    df_name['Семестр_int'] = df_name['Семестр'].fillna(0).astype(int)
 
-                        filtered_df.to_excel(writer, sheet_name=sheet_name, index=False, startrow=2, header=False)
+                    hours_cols_to_round = OUTPUT_COLS[6:]
+                    # Важно: заменяем все inf/NaN на 0 перед округлением
+                    df_name[hours_cols_to_round] = df_name[hours_cols_to_round].replace([np.inf, -np.inf],
+                                                                                        np.nan).fillna(0).round(2)
 
-                        worksheet = writer.sheets[sheet_name]
-                        self.format_worksheet(worksheet, workbook)
+                    df_sem1_all = df_name[df_name['Семестр_int'] % 2 != 0]
+                    df_sem2_all = df_name[df_name['Семестр_int'] % 2 == 0]
+                    df_sem2_all = df_sem2_all[df_sem2_all['Семестр_int'] > 0]
+
+                    excluded_rows = df_name[df_name['Семестр_int'] == 0]
+                    excluded_count += len(excluded_rows)
+
+                    df_sem1_data = df_sem1_all.iloc[:10].copy()
+                    df_sem1_adopted = df_sem1_all.iloc[10:14].copy()
+
+                    df_sem2_data = df_sem2_all.iloc[:10].copy()
+                    df_sem2_adopted = df_sem2_all.iloc[10:13].copy()
+
+                    sheet_name = f'{name}'
+                    if len(sheet_name) > 31:
+                        sheet_name = sheet_name[:31]
+
+                    worksheet = workbook.add_worksheet(sheet_name)
+
+                    # 5. Форматирование заголовков (сохраняет границы, как и должно быть)
+                    # предполагается, что self.format_worksheet определен
+                    # Если его нет, этот код может вызвать ошибку, но основываясь на предыдущем контексте, он есть.
+                    self.format_worksheet(worksheet, workbook)
+
+                    # 6. Запись данных и специальных строк (I СЕМЕСТР)
+
+                    # 6.1. Основные данные (Строки 3-12, индексы 2-11) - С ГРАНИЦАМИ
+                    start_row_sem1_data = 2
+                    for i, row in enumerate(df_sem1_data[OUTPUT_COLS].values):
+                        # Принудительное преобразование текстовых элементов в str
+                        text_data = [str(x) for x in row[:6]]
+                        worksheet.write_row(start_row_sem1_data + i, 0, text_data, text_data_format)
+                        worksheet.write_row(start_row_sem1_data + i, 6, row[6:], data_format)
+
+                    # --- ЗАПОЛНЕНИЕ ПУСТЫХ ЯЧЕЕК В БЛОКЕ ДАННЫХ I (А3:AD12) - С ГРАНИЦАМИ, НО БЕЗ НУЛЕЙ
+                    for i in range(len(df_sem1_data), 10):
+                        for col in TEXT_COLS_INDICES:
+                            worksheet.write(start_row_sem1_data + i, col, '', special_cell_format)
+                        for col in HOURS_COLS_INDICES:
+                            # ИСПРАВЛЕНИЕ: Записываем пустую строку вместо 0
+                            worksheet.write(start_row_sem1_data + i, col, '', data_format)
+
+                            # 6.2. Специальная строка: 'принято с других направлений' (Строка 13, Индекс 12)
+                    row_index_adopted_name = 12
+                    worksheet.write(row_index_adopted_name, 1, 'принято с других направлений', special_text_format)
+
+                    for col in [0, 2, 3, 4, 5]:
+                        worksheet.write(row_index_adopted_name, col, '', special_cell_format)
+                    for col in HOURS_COLS_INDICES:
+                        # ИСПРАВЛЕНИЕ: Записываем пустую строку вместо 0
+                        worksheet.write(row_index_adopted_name, col, '', data_format)
+
+                    # 6.3. Данные "принято с других направлений" (Строки 14-17, индексы 13-16) - С ГРАНИЦАМИ
+                    start_row_adopted_data = 13
+                    for i, row in enumerate(df_sem1_adopted[OUTPUT_COLS].values):
+                        # Принудительное преобразование текстовых элементов в str
+                        text_data = [str(x) for x in row[:6]]
+                        worksheet.write_row(start_row_adopted_data + i, 0, text_data, text_data_format)
+                        worksheet.write_row(start_row_adopted_data + i, 6, row[6:], data_format)
+
+                    # --- ЗАПОЛНЕНИЕ ПУСТЫХ ЯЧЕЕК В БЛОКЕ ДАННЫХ I (А14:AD17) - С ГРАНИЦАМИ, НО БЕЗ НУЛЕЙ
+                    for i in range(len(df_sem1_adopted), 4):
+                        for col in TEXT_COLS_INDICES:
+                            worksheet.write(start_row_adopted_data + i, col, '', special_cell_format)
+                        for col in HOURS_COLS_INDICES:
+                            # ИСПРАВЛЕНИЕ: Записываем пустую строку вместо 0
+                            worksheet.write(start_row_adopted_data + i, col, '', data_format)
+
+                    # 6.4. ИТОГО принято с других подразделений (Строка 18, Индекс 17) - С ГРАНИЦЕЙ (СЕРЫЙ ФОН)
+                    row_index_adopted_total = 17
+                    worksheet.write(row_index_adopted_total, 1, 'ИТОГО принято с других подразделений',
+                                    total_row_format)
+
+                    # Формула для суммы: G14:AD17 (строки 14-17) - С ГРАНИЦЕЙ
+                    for col_idx in HOURS_COLS_INDICES:
+                        col_letter = xlsxwriter.utility.xl_col_to_name(col_idx)
+                        formula = f'=SUM({col_letter}14:{col_letter}17)'
+                        worksheet.write_formula(row_index_adopted_total, col_idx, formula, total_formula_format)
+
+                    # Заполнение пустых текстовых ячеек (A, C-F) в строке ИТОГО
+                    for col in [0, 2, 3, 4, 5]:
+                        worksheet.write(row_index_adopted_total, col, '', total_filler_format)
+
+                    # 6.5. ИТОГО ЗА I СЕМЕСТР (Строка 19, Индекс 18) - С ГРАНИЦЕЙ (СЕРЫЙ ФОН)
+                    row_index_sem1_total = 18
+                    worksheet.write(row_index_sem1_total, 1, 'ИТОГО ЗА I СЕМЕСТР', total_row_format)
+
+                    # Формула для суммы: G3:AD18 (весь первый блок, включая ИТОГ по принятым) - С ГРАНИЦЕЙ
+                    for col_idx in HOURS_COLS_INDICES:
+                        col_letter = xlsxwriter.utility.xl_col_to_name(col_idx)
+                        formula = f'=SUM({col_letter}3:{col_letter}18)'
+                        worksheet.write_formula(row_index_sem1_total, col_idx, formula, total_formula_format)
+
+                    # Заполнение пустых текстовых ячеек (A, C-F) в строке ИТОГО
+                    for col in [0, 2, 3, 4, 5]:
+                        worksheet.write(row_index_sem1_total, col, '', total_filler_format)
+
+                    # 7. Запись данных и специальных строк (II СЕМЕСТР)
+
+                    # 7.1. Основные данные (Строки 20-29, индексы 19-28) - С ГРАНИЦАМИ
+                    start_row_sem2_data = 19
+                    for i, row in enumerate(df_sem2_data[OUTPUT_COLS].values):
+                        # Принудительное преобразование текстовых элементов в str
+                        text_data = [str(x) for x in row[:6]]
+                        worksheet.write_row(start_row_sem2_data + i, 0, text_data, text_data_format)
+                        worksheet.write_row(start_row_sem2_data + i, 6, row[6:], data_format)
+
+                    # --- ЗАПОЛНЕНИЕ ПУСТЫХ ЯЧЕЕК В БЛОКЕ ДАННЫХ II (А20:AD29) - С ГРАНИЦАМИ, НО БЕЗ НУЛЕЙ
+                    for i in range(len(df_sem2_data), 10):
+                        for col in TEXT_COLS_INDICES:
+                            worksheet.write(start_row_sem2_data + i, col, '', special_cell_format)
+                        for col in HOURS_COLS_INDICES:
+                            # ИСПРАВЛЕНИЕ: Записываем пустую строку вместо 0
+                            worksheet.write(start_row_sem2_data + i, col, '', data_format)
+
+                    # 7.2. Специальная строка: 'принято с других направлений' (Строка 31, Индекс 30)
+                    row_index_adopted_name_sem2 = 30
+                    worksheet.write(row_index_adopted_name_sem2, 1, 'принято с других направлений', special_text_format)
+
+                    for col in [0, 2, 3, 4, 5]:
+                        worksheet.write(row_index_adopted_name_sem2, col, '', special_cell_format)
+                    for col in HOURS_COLS_INDICES:
+                        # ИСПРАВЛЕНИЕ: Записываем пустую строку вместо 0
+                        worksheet.write(row_index_adopted_name_sem2, col, '', data_format)
+
+                    # 7.3. Данные "принято с других направлений" (Строки 32-34, индексы 31-33) - С ГРАНИЦАМИ
+                    start_row_adopted_data_sem2 = 31
+                    for i, row in enumerate(df_sem2_adopted[OUTPUT_COLS].values):
+                        # Принудительное преобразование текстовых элементов в str
+                        text_data = [str(x) for x in row[:6]]
+                        worksheet.write_row(start_row_adopted_data_sem2 + i, 0, text_data, text_data_format)
+                        worksheet.write_row(start_row_adopted_data_sem2 + i, 6, row[6:], data_format)
+
+                    # --- ЗАПОЛНЕНИЕ ПУСТЫХ ЯЧЕЕК В БЛОКЕ ДАННЫХ II (А32:AD34) - С ГРАНИЦАМИ, НО БЕЗ НУЛЕЙ
+                    for i in range(len(df_sem2_adopted), 3):
+                        for col in TEXT_COLS_INDICES:
+                            worksheet.write(start_row_adopted_data_sem2 + i, col, '', special_cell_format)
+                        for col in HOURS_COLS_INDICES:
+                            # ИСПРАВЛЕНИЕ: Записываем пустую строку вместо 0
+                            worksheet.write(start_row_adopted_data_sem2 + i, col, '', data_format)
+
+                    # 7.4. ИТОГО принято с других подразделений (Строка 35, Индекс 34) - С ГРАНИЦЕЙ (СЕРЫЙ ФОН)
+                    row_index_adopted_total_sem2 = 34
+                    worksheet.write(row_index_adopted_total_sem2, 1, 'ИТОГО принято с других подразделений',
+                                    total_row_format)
+
+                    # Формула для суммы: G32:AD34 (строки 32-34)
+                    for col_idx in HOURS_COLS_INDICES:
+                        col_letter = xlsxwriter.utility.xl_col_to_name(col_idx)
+                        formula = f'=SUM({col_letter}32:{col_letter}34)'
+                        worksheet.write_formula(row_index_adopted_total_sem2, col_idx, formula, total_formula_format)
+
+                    # Заполнение пустых текстовых ячеек (A, C-F) в строке ИТОГО
+                    for col in [0, 2, 3, 4, 5]:
+                        worksheet.write(row_index_adopted_total_sem2, col, '', total_filler_format)
+
+                    # 7.5. ИТОГО ЗА II СЕМЕСТР (Строка 36, Индекс 35) - С ГРАНИЦЕЙ (СЕРЫЙ ФОН)
+                    row_index_sem2_total = 35
+                    worksheet.write(row_index_sem2_total, 1, 'ИТОГО ЗА II СЕМЕСТР', total_row_format)
+
+                    # Формула для суммы: G20:AD35 (весь второй блок)
+                    for col_idx in HOURS_COLS_INDICES:
+                        col_letter = xlsxwriter.utility.xl_col_to_name(col_idx)
+                        formula = f'=SUM({col_letter}20:{col_letter}35)'
+                        worksheet.write_formula(row_index_sem2_total, col_idx, formula, total_formula_format)
+
+                    # Заполнение пустых текстовых ячеек (A, C-F) в строке ИТОГО
+                    for col in [0, 2, 3, 4, 5]:
+                        worksheet.write(row_index_sem2_total, col, '', total_filler_format)
+
+                    # 7.6. ВСЕГО ЗА ГОД (Строка 37, Индекс 36) - С ГРАНИЦЕЙ (СЕРЫЙ ФОН)
+                    row_index_year_total = 36
+                    worksheet.write(row_index_year_total, 1, 'ВСЕГО ЗА ГОД', total_row_format)
+
+                    # Формула для суммы: ИТОГО ЗА I СЕМЕСТР (строка 19) + ИТОГО ЗА II СЕМЕСТР (строка 36)
+                    for col_idx in HOURS_COLS_INDICES:
+                        col_letter = xlsxwriter.utility.xl_col_to_name(col_idx)
+                        formula = f'={col_letter}19+{col_letter}36'
+                        worksheet.write_formula(row_index_year_total, col_idx, formula, total_formula_format)
+
+                    # Заполнение пустых текстовых ячеек (A, C-F) в строке ИТОГО
+                    for col in [0, 2, 3, 4, 5]:
+                        worksheet.write(row_index_year_total, col, '', total_filler_format)
 
             self.status_label.config(text=f"Отчёт '{os.path.basename(output_file)}' успешно сохранён.",
                                      foreground="green")
-            messagebox.showinfo("Готово", f"Отчёт '{os.path.basename(output_file)}' успешно сохранён.")
 
-        except Exception as e:
-            self.status_label.config(text=f"Критическая ошибка при сохранении: {e}", foreground="red")
-            messagebox.showerror("Ошибка сохранения", f"Не удалось сохранить отчёт: {e}")
-            traceback.print_exc()
+            # Сообщение об исключенных строках
+            if excluded_count > 0:
+                messagebox.showwarning("Внимание",
+                                       f"Отчёт сохранён. {excluded_count} строк (Руководства или практики) были исключены, так как имеют Семестр = 0. Это сделано для корректного разграничения I (нечетного) и II (четного) семестров.")
+            else:
+                messagebox.showinfo("Готово", f"Отчёт '{os.path.basename(output_file)}' успешно сохранён.")
+
+        except PermissionError:
+            self.status_label.config(text="Ошибка доступа: Закройте файл Excel перед сохранением.", foreground="red")
+            messagebox.showerror("Ошибка доступа",
+                                 "Файл отчёта открыт в другой программе. Закройте его и повторите попытку.")
 
     def format_worksheet(self, worksheet, workbook):
         """
@@ -704,7 +942,8 @@ class App:
         for merge_range, title in merges:
             worksheet.merge_range(merge_range, title, header_format)
 
-        vertical_columns_indices = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29]
+        vertical_columns_indices = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26,
+                                    27, 28, 29]
 
         for i, header_text in enumerate(level1_headers):
             col_index = i
