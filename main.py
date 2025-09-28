@@ -303,16 +303,6 @@ class App:
         Теперь работает напрямую с self.df_f1 для избежания NaN.
         """
         try:
-            # --- НАЧАЛО ОТЛАДКИ ---
-            print("--- Начало отладки ---")
-            print("Имя функции: recalculate_totals")
-            print(f"Обрабатываемая строка (индекс): {row_index}")
-            print("Доступные ключи (имена столбцов) в df_f2_processed:")
-            for key in self.df_f2_processed.columns:
-                print(f"- {key}")
-            print("--- Конец отладки ---")
-            # --- КОНЕЦ ОТЛАДКИ ---
-
             # Используем .iloc для доступа к строке по её целочисленной позиции
             f2_row = self.df_f2_processed.iloc[row_index]
 
@@ -432,8 +422,26 @@ class App:
 
             df_f2 = df_f2_raw.rename(columns=column_mapping_f2_to_internal, errors='ignore')
             df_f2 = df_f2.dropna(how='all')
+
+            # --- ИЗМЕНЕНИЕ: Добавление фильтрации стоп-фраз ---
+            stop_phrases_pattern = '|'.join([
+                r'^ДНЕВНОЕ ОТДЕЛЕНИЕ,\s*МАГИСТРАТУРА$',
+                r'^ДНЕВНОЕ ОТДЕЛЕНИЕ,\s*АСПИРАНТУРА$',
+                r'^ДРУГАЯ НАГРУЗКА$',
+                r'^ОБЩЕЕ ЧИСЛО СТУДЕНТОВ$',
+                r'^[IVX]+\.\s+'  # Существующая фильтрация для "I. ОБЩИЕ..."
+            ])
+
+            # Исключаем строки, содержащие стоп-фразы или заголовки разделов
             df_f2 = df_f2[
-                ~df_f2['Наименование_Дисциплины'].astype(str).str.contains(r'^[IVX]+\.\s+', na=False, regex=True)]
+                ~df_f2['Наименование_Дисциплины'].astype(str).str.strip().str.contains(
+                    stop_phrases_pattern,
+                    na=False,
+                    regex=True,
+                    case=False  # Игнорируем регистр
+                )
+            ].infer_objects(copy=False)
+            # --- КОНЕЦ ИЗМЕНЕНИЯ ---
 
             df_f2[['Количество_Групп_Число', 'Количество_Подгрупп_Число']] = df_f2['Группы_Подгруппы_F2_Raw'].apply(
                 lambda x: pd.Series(parse_groups_subgroups(x)))
